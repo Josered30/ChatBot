@@ -10,6 +10,7 @@ import Chat from './shared/Chat';
 
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
+
 import {RecognizeTextCommand} from '@aws-sdk/client-lex-runtime-v2';
 import {client} from './core/services/aws';
 
@@ -25,8 +26,6 @@ const styles = StyleSheet.create({
 const App = () => {
   const [data, setData] = useState<Message[]>([]);
 
-  console.log(data);
-
   const botInteraction = async (input: string) => {
     const command = new RecognizeTextCommand({
       text: input,
@@ -37,12 +36,17 @@ const App = () => {
     });
 
     const response = await client.send(command).catch(console.log);
-    const newData = response.messages.map((e: any) => ({
-      id: new Date().getTime(),
-      text: e.content,
-      sender: 'bot',
-    }));
-    setData((e: Message[]) => [...e, ...newData]);
+    const newData = response?.messages?.map(
+      (e: any): Message => ({
+        id: new Date().getTime(),
+        text: e.content,
+        sender: 'bot',
+      }),
+    );
+
+    if (newData) {
+      setData((e: Message[]) => [...e, ...newData]);
+    }
   };
 
   const sendMessage = async (message: string) => {
