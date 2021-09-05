@@ -37,6 +37,7 @@ const useStyles = makeStyles(_ => ({
   },
 }));
 
+
 function MessageItem(props: MessageProps) {
   const theme = useTheme();
   const styles = useStyles(theme);
