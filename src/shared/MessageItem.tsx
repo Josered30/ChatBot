@@ -21,6 +21,7 @@ const useStyles = makeStyles(_ => ({
     borderBottomRightRadius: 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    maxWidth: 350,
   },
   botMessage: {
     paddingHorizontal: 10,
@@ -32,6 +33,7 @@ const useStyles = makeStyles(_ => ({
     borderBottomRightRadius: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    maxWidth: 350,
   },
 }));
 
