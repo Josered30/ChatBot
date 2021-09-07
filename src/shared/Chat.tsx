@@ -1,4 +1,4 @@
-import {FlatList, useTheme} from 'native-base';
+import {FlatList} from 'native-base';
 import React, {useEffect, useRef, useState} from 'react';
 import makeStyles from '../core/hooks/makeStyles';
 import useKeyboard from '../core/hooks/useKeyboard';
@@ -26,8 +26,7 @@ function Chat(props: ChatProps) {
     notKeyboard: 0,
   });
 
-  const theme = useTheme();
-  const styles = useStyles(theme);
+  const styles = useStyles();
 
   useEffect(() => {
     flagRef.current = flag;

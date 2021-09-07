@@ -26,7 +26,7 @@ const useStyles = makeStyles(theme => ({
 
 function ChatInput(props: ChatInputProps) {
   const theme = useTheme();
-  const styles = useStyles(theme);
+  const styles = useStyles();
 
   const [text, setText] = useState('');
 
