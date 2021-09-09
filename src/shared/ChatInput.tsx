@@ -1,8 +1,10 @@
 import {HStack, IconButton, useTheme, Input, View} from 'native-base';
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
+import {Animated, Easing} from 'react-native';
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import makeStyles from '../core/hooks/makeStyles';
+import {requestAudioPermission} from '../core/utils/permission';
 
 interface ChatInputProps {
   sendMessage: (text: string) => void;
@@ -10,7 +12,10 @@ interface ChatInputProps {
 
 const useStyles = makeStyles(theme => ({
   icon: {
-    paddingHorizontal: 10,
+    marginHorizontal: 8,
+    marginVertical: 5,
+    backgroundColor: theme.colors.secondary[500],
+    borderRadius: 100,
   },
   inputWrapper: {
     flex: 1,
@@ -27,8 +32,10 @@ const useStyles = makeStyles(theme => ({
 function ChatInput(props: ChatInputProps) {
   const theme = useTheme();
   const styles = useStyles();
+  const scaleAnimation = useRef(new Animated.Value(1)).current;
 
   const [text, setText] = useState('');
+  const [icon, setIcon] = useState('mic');
 
   const handleText = async () => {
     if (text) {
@@ -38,9 +45,52 @@ function ChatInput(props: ChatInputProps) {
     //Keyboard.dismiss();
   };
 
+  const shrinkAnimation = () =>
+    Animated.timing(scaleAnimation, {
+      toValue: 0,
+      duration: 100,
+      easing: Easing.ease,
+      useNativeDriver: true,
+    }).start(() => {
+      if (icon === 'send') {
+        setIcon('mic');
+        growAnimation();
+      } else {
+        setIcon('send');
+        growAnimation();
+      }
+    });
+
+  const growAnimation = () =>
+    Animated.timing(scaleAnimation, {
+      toValue: 1,
+      duration: 100,
+      easing: Easing.ease,
+      useNativeDriver: true,
+    }).start();
+
+  const changeText = async (value: string) => {
+    if (value.length === 0 || text.length === 0) {
+      shrinkAnimation();
+    }
+    setText(value);
+  };
+
+  const handleAudio = async () => {
+    const flag = await requestAudioPermission();
+  };
+
+  const handleButton = () => {
+    if (icon === 'send') {
+      handleText();
+    } else {
+      handleAudio();
+    }
+  };
+
   return (
-    <HStack my={2}>
-      <View mx={2} style={styles.inputWrapper}>
+    <HStack my={2} px={2}>
+      <View style={styles.inputWrapper}>
         <Input
           style={styles.input}
           placeholder="Escriba un mensaje"
@@ -50,27 +100,41 @@ function ChatInput(props: ChatInputProps) {
           _focus={{
             style: styles.inputFocus,
           }}
-          onChangeText={setText}
+          onChangeText={changeText}
           value={text}
           paddingY={2}
         />
       </View>
 
       <IconButton
+        style={styles.icon}
         icon={
-          <MaterialIcons
-            name="send"
-            size={20}
-            color={theme.colors.secondary[500]}
-            style={styles.icon}
-          />
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  scaleX: scaleAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                  }),
+                },
+                {
+                  scaleY: scaleAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                  }),
+                },
+              ],
+            }}>
+            <MaterialIcons name={icon} size={20} />
+          </Animated.View>
         }
         variant="unstyled"
         android_ripple={{
           color: theme.colors.secondary[400],
           radius: 20,
         }}
-        onPress={handleText}
+        onPress={handleButton}
       />
     </HStack>
   );
