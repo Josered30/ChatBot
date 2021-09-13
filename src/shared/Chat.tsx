@@ -75,7 +75,7 @@ function Chat(props: ChatProps) {
       onContentSizeChange={() => list.current.scrollToEnd()}
       onScroll={handleScroll}
       onEndReached={() => (flagRef.current = true)}
-      keyboardShouldPersistTaps={'handled'}
+      keyboardShouldPersistTaps="always"
     />
   );
 }

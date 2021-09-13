@@ -1,5 +1,5 @@
 import {HStack, IconButton, Text, useTheme, View} from 'native-base';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {ColorValue, FlexAlignType} from 'react-native';
 import Sound from 'react-native-sound';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -43,35 +43,17 @@ const useStyles = makeStyles(_ => ({
   },
 }));
 
+function formatDuration(seconds: number): string {
+  return new Date(seconds * 1000).toISOString().substr(14, 5);
+}
+
 function MessageItem(props: MessageProps) {
   const theme = useTheme();
   const styles = useStyles();
 
   const [play, setPlay] = useState(false);
-  const [duration, setDuration] = useState(0);
 
   let sound = useRef<Sound | null>(null);
-
-  useEffect(() => {
-    if (props.message.type === MessageType.AUDIO) {
-      sound.current = new Sound(
-        props.message.audioContent?.path,
-        undefined,
-        error => {
-          if (error) {
-            console.log('failed to load the sound', error);
-            return;
-          }
-          // loaded successfully
-
-          if (sound.current) {
-            console.log('duration in seconds: ' + sound.current.getDuration());
-            setDuration(sound.current.getDuration());
-          }
-        },
-      );
-    }
-  }, []);
 
   const color =
     props.color === null ? theme.colors.secondary[500] : props.color;
@@ -81,13 +63,33 @@ function MessageItem(props: MessageProps) {
     props.message.sender === 'bot' ? styles.botMessage : styles.userMessage;
 
   const handleAudio = () => {
-    if (sound.current) {
-      if (!play) {
+    if (!play) {
+      if (sound.current) {
         sound.current.play(() => {
           setPlay(false);
         });
         setPlay(true);
       } else {
+        sound.current = new Sound(
+          props.message.audioContent?.path,
+          undefined,
+          error => {
+            if (error) {
+              console.log('failed to load the sound', error);
+              return;
+            }
+            // loaded successfully
+            if (sound.current) {
+              sound.current.play(() => {
+                setPlay(false);
+              });
+              setPlay(true);
+            }
+          },
+        );
+      }
+    } else {
+      if (sound.current) {
         sound.current.pause();
         setPlay(false);
       }
@@ -119,7 +121,9 @@ function MessageItem(props: MessageProps) {
             onPress={handleAudio}
           />
 
-          <Text style={styles.audioText}>{duration}</Text>
+          <Text style={styles.audioText}>
+            {formatDuration(props.message.audioContent?.duration!!)}
+          </Text>
         </HStack>
       </View>
     );

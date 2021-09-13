@@ -58,6 +58,8 @@ const App = () => {
     //   setData((e: Message[]) => [...e, ...newData]);
     // }
 
+    console.log(responseText);
+
     if (responseText) {
       const message = await getMessageFromSpeech(responseText[0]);
       setData((e: Message[]) => [...e, message]);

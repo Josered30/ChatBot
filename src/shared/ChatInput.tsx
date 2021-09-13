@@ -103,9 +103,11 @@ function ChatInput(props: ChatInputProps) {
       changeIconAnimation('mic');
       setRecording(false);
       await onStopRecord();
+
       props.sendMessage(
         {
           path: path,
+          duration: record.recordSecs / 1000,
         },
         MessageType.AUDIO,
       );

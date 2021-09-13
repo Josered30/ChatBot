@@ -1,1 +1,1 @@
-export const api = 'http://10.0.2.2:3000';
+export const api = 'https://polly-test.herokuapp.com';

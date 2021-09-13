@@ -9,6 +9,7 @@ export type TextContent = {
 
 export type AudioContent = {
   path: string;
+  duration: number;
 };
 
 export interface Message {
