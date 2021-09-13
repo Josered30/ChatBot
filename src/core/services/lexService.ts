@@ -4,7 +4,7 @@ import {LexRuntimeV2Client} from '@aws-sdk/client-lex-runtime-v2';
 
 const region = 'us-east-1';
 
-export const client = new LexRuntimeV2Client({
+export const lexClient = new LexRuntimeV2Client({
   region: region,
   credentials: fromCognitoIdentityPool({
     client: new CognitoIdentityClient({region}),

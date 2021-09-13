@@ -1,13 +1,16 @@
-import {HStack, IconButton, useTheme, Input, View} from 'native-base';
+import {HStack, IconButton, useTheme, Input, View, Text} from 'native-base';
 import React, {useRef, useState} from 'react';
 import {Animated, Easing} from 'react-native';
-
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import makeStyles from '../core/hooks/makeStyles';
 import {requestAudioPermission} from '../core/utils/permission';
+import {AudioContent, MessageType, TextContent} from '../core/models/message';
+import {useAudioRecorder} from '../core/hooks/useAudioRecorder';
+import {useAudio} from '../core/redux/audioPlayerContext';
+import RNFetchBlob from 'rn-fetch-blob';
 
 interface ChatInputProps {
-  sendMessage: (text: string) => void;
+  sendMessage: (content: TextContent | AudioContent, type: MessageType) => void;
 }
 
 const useStyles = makeStyles(theme => ({
@@ -16,16 +19,22 @@ const useStyles = makeStyles(theme => ({
     marginVertical: 5,
     backgroundColor: theme.colors.secondary[500],
     borderRadius: 100,
+    alignSelf: 'flex-end',
   },
   inputWrapper: {
     flex: 1,
     maxHeight: 100,
-  },
-  input: {
     borderColor: theme.colors.secondary[400],
+    borderWidth: 1,
+    borderRadius: 10,
+    justifyContent: 'center',
   },
   inputFocus: {
     borderColor: theme.colors.secondary[500],
+  },
+  recordLabel: {
+    marginLeft: 15,
+    color: 'gray',
   },
 }));
 
@@ -34,54 +43,78 @@ function ChatInput(props: ChatInputProps) {
   const styles = useStyles();
   const scaleAnimation = useRef(new Animated.Value(1)).current;
 
-  const [text, setText] = useState('');
-  const [icon, setIcon] = useState('mic');
+  const [text, setText] = useState<string>('');
+  const [icon, setIcon] = useState<string>('mic');
+
+  const {audioState} = useAudio();
+  const {record, onStartRecord, onStopRecord, resetState} = useAudioRecorder(
+    audioState.audioRecorderPlayer,
+  );
+
+  const [recording, setRecording] = useState(false);
+  const recordTime = record.recordTime.substring(0, 5);
 
   const handleText = async () => {
     if (text) {
-      props.sendMessage(text);
+      props.sendMessage({text: text}, MessageType.TEXT);
+      setText('');
+      changeIconAnimation('mic');
     }
-    setText('');
-    //Keyboard.dismiss();
+    //Keyboard.dismiss();F
   };
 
-  const shrinkAnimation = () =>
+  const changeIconAnimation = (newIcon: string) =>
     Animated.timing(scaleAnimation, {
       toValue: 0,
-      duration: 100,
+      duration: 50,
       easing: Easing.ease,
       useNativeDriver: true,
     }).start(() => {
-      if (icon === 'send') {
-        setIcon('mic');
-        growAnimation();
-      } else {
-        setIcon('send');
-        growAnimation();
-      }
+      setIcon(newIcon);
+      Animated.timing(scaleAnimation, {
+        toValue: 1,
+        duration: 50,
+        easing: Easing.ease,
+        useNativeDriver: true,
+      }).start();
     });
-
-  const growAnimation = () =>
-    Animated.timing(scaleAnimation, {
-      toValue: 1,
-      duration: 100,
-      easing: Easing.ease,
-      useNativeDriver: true,
-    }).start();
 
   const changeText = async (value: string) => {
     if (value.length === 0 || text.length === 0) {
-      shrinkAnimation();
+      const newIcon = icon === 'send' ? 'mic' : 'send';
+      changeIconAnimation(newIcon);
     }
     setText(value);
   };
 
   const handleAudio = async () => {
     const flag = await requestAudioPermission();
+    if (!flag) {
+      return;
+    }
+
+    const path = `${RNFetchBlob.fs.dirs.MainBundleDir}/audio.mp4`;
+
+    if (!recording) {
+      changeIconAnimation('send');
+      setRecording(true);
+      onStartRecord(path);
+    } else {
+      changeIconAnimation('mic');
+      setRecording(false);
+      await onStopRecord();
+      props.sendMessage(
+        {
+          path: path,
+        },
+        MessageType.AUDIO,
+      );
+      resetState();
+    }
   };
 
   const handleButton = () => {
-    if (icon === 'send') {
+    if (text.length > 0) {
       handleText();
     } else {
       handleAudio();
@@ -91,19 +124,20 @@ function ChatInput(props: ChatInputProps) {
   return (
     <HStack my={2} px={2}>
       <View style={styles.inputWrapper}>
-        <Input
-          style={styles.input}
-          placeholder="Escriba un mensaje"
-          underlineColorAndroid="transparent"
-          isFullWidth={true}
-          multiline={true}
-          _focus={{
-            style: styles.inputFocus,
-          }}
-          onChangeText={changeText}
-          value={text}
-          paddingY={2}
-        />
+        {!recording ? (
+          <Input
+            placeholder="Escriba un mensaje"
+            underlineColorAndroid="transparent"
+            isFullWidth={true}
+            multiline={true}
+            onChangeText={changeText}
+            value={text}
+            paddingY={2}
+            variant="unstyled"
+          />
+        ) : (
+          <Text style={styles.recordLabel}>{recordTime}</Text>
+        )}
       </View>
 
       <IconButton

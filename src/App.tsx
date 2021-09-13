@@ -5,14 +5,21 @@ import {SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import {theme} from './styles/theme';
 import AppBar from './shared/Appbar';
 import ChatInput from './shared/ChatInput';
-import {Message} from './core/models/message';
+import {
+  AudioContent,
+  Message,
+  MessageType,
+  TextContent,
+} from './core/models/message';
 import Chat from './shared/Chat';
+
+import {RecognizeTextCommand} from '@aws-sdk/client-lex-runtime-v2';
 
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
-
-import {RecognizeTextCommand} from '@aws-sdk/client-lex-runtime-v2';
-import {client} from './core/services/aws';
+import {AudioPlayerProvider} from './core/redux/audioPlayerContext';
+import {lexClient} from './core/services/lexService';
+import {getMessageFromSpeech} from './core/services/pollyService';
 
 const styles = StyleSheet.create({
   fullHeight: {
@@ -35,48 +42,70 @@ const App = () => {
       sessionId: 'test-session',
     });
 
-    const response = await client.send(command).catch(console.log);
-    const newData = response?.messages?.map(
-      (e: any): Message => ({
-        id: new Date().getTime(),
-        text: e.content,
-        sender: 'bot',
-      }),
-    );
+    const response = await lexClient.send(command).catch(console.log);
+    const responseText = response?.messages?.map((e: any) => e.content);
 
-    if (newData) {
-      setData((e: Message[]) => [...e, ...newData]);
+    // const newData = response?.messages?.map(
+    //   (e: any): Message => ({
+    //     id: new Date().getTime(),
+    //     textContent: {text: e.content},
+    //     sender: 'bot',
+    //     type: MessageType.TEXT,
+    //   }),
+    // );
+
+    // if (newData) {
+    //   setData((e: Message[]) => [...e, ...newData]);
+    // }
+
+    if (responseText) {
+      const message = await getMessageFromSpeech(responseText[0]);
+      setData((e: Message[]) => [...e, message]);
     }
   };
 
-  const sendMessage = async (message: string) => {
-    setData((e: Message[]) => [
-      ...e,
-      {
+  const sendMessage = async (
+    content: TextContent | AudioContent,
+    type: MessageType,
+  ) => {
+    if (type === MessageType.TEXT) {
+      const newMessage: Message = {
         id: new Date().getTime(),
-        text: message,
+        textContent: content as TextContent,
         sender: 'user',
-      },
-    ]);
-    botInteraction(message);
+        type: type,
+      };
+      setData((e: Message[]) => [...e, newMessage]);
+      botInteraction((content as TextContent).text);
+    } else {
+      const newMessage: Message = {
+        id: new Date().getTime(),
+        audioContent: content as AudioContent,
+        sender: 'user',
+        type: type,
+      };
+      setData((e: Message[]) => [...e, newMessage]);
+    }
   };
 
   return (
     <NativeBaseProvider theme={theme}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={theme.colors.background}
-      />
-      <AppBar />
+      <AudioPlayerProvider>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={theme.colors.background}
+        />
+        <AppBar />
 
-      <SafeAreaView
-        style={{
-          backgroundColor: theme.colors.background,
-          ...styles.fullHeight,
-        }}>
-        <Chat data={data} />
-        <ChatInput sendMessage={sendMessage} />
-      </SafeAreaView>
+        <SafeAreaView
+          style={{
+            backgroundColor: theme.colors.background,
+            ...styles.fullHeight,
+          }}>
+          <Chat data={data} />
+          <ChatInput sendMessage={sendMessage} />
+        </SafeAreaView>
+      </AudioPlayerProvider>
     </NativeBaseProvider>
   );
 };

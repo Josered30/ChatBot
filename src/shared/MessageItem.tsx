@@ -1,8 +1,10 @@
-import {Text, useTheme, View} from 'native-base';
-import React from 'react';
+import {HStack, IconButton, Text, useTheme, View} from 'native-base';
+import React, {useEffect, useRef, useState} from 'react';
 import {ColorValue, FlexAlignType} from 'react-native';
+import Sound from 'react-native-sound';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import makeStyles from '../core/hooks/makeStyles';
-import {Message} from '../core/models/message';
+import {Message, MessageType} from '../core/models/message';
 
 interface MessageProps {
   message: Message;
@@ -35,11 +37,41 @@ const useStyles = makeStyles(_ => ({
     borderTopRightRadius: 20,
     maxWidth: 350,
   },
+  audioText: {
+    fontSize: 12,
+    marginHorizontal: 5,
+  },
 }));
 
 function MessageItem(props: MessageProps) {
   const theme = useTheme();
   const styles = useStyles();
+
+  const [play, setPlay] = useState(false);
+  const [duration, setDuration] = useState(0);
+
+  let sound = useRef<Sound | null>(null);
+
+  useEffect(() => {
+    if (props.message.type === MessageType.AUDIO) {
+      sound.current = new Sound(
+        props.message.audioContent?.path,
+        undefined,
+        error => {
+          if (error) {
+            console.log('failed to load the sound', error);
+            return;
+          }
+          // loaded successfully
+
+          if (sound.current) {
+            console.log('duration in seconds: ' + sound.current.getDuration());
+            setDuration(sound.current.getDuration());
+          }
+        },
+      );
+    }
+  }, []);
 
   const color =
     props.color === null ? theme.colors.secondary[500] : props.color;
@@ -48,12 +80,50 @@ function MessageItem(props: MessageProps) {
   const messageStyle =
     props.message.sender === 'bot' ? styles.botMessage : styles.userMessage;
 
-  return (
-    <View
-      style={{backgroundColor: color, alignSelf: position, ...messageStyle}}>
-      <Text>{props.message.text}</Text>
-    </View>
-  );
+  const handleAudio = () => {
+    if (sound.current) {
+      if (!play) {
+        sound.current.play(() => {
+          setPlay(false);
+        });
+        setPlay(true);
+      } else {
+        sound.current.pause();
+        setPlay(false);
+      }
+    }
+  };
+
+  if (props.message.type === MessageType.TEXT) {
+    return (
+      <View
+        style={{backgroundColor: color, alignSelf: position, ...messageStyle}}>
+        <Text>{props.message.textContent?.text}</Text>
+      </View>
+    );
+  } else {
+    return (
+      <View
+        style={{backgroundColor: color, alignSelf: position, ...messageStyle}}>
+        <HStack alignItems="center">
+          <IconButton
+            size="sm"
+            icon={
+              <MaterialIcons name={!play ? 'play-arrow' : 'stop'} size={20} />
+            }
+            android_ripple={{
+              color: theme.colors.secondary[400],
+              radius: 15,
+            }}
+            variant="unstyled"
+            onPress={handleAudio}
+          />
+
+          <Text style={styles.audioText}>{duration}</Text>
+        </HStack>
+      </View>
+    );
+  }
 }
 
 export default MessageItem;

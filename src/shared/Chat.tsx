@@ -1,5 +1,5 @@
 import {FlatList} from 'native-base';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import makeStyles from '../core/hooks/makeStyles';
 import useKeyboard from '../core/hooks/useKeyboard';
 import {Message} from '../core/models/message';
@@ -18,8 +18,7 @@ const useStyles = makeStyles(_ => ({
 function Chat(props: ChatProps) {
   const list = useRef<any>(null);
 
-  const [flag, setFlag] = useState(false);
-  const flagRef = useRef(flag);
+  const flagRef = useRef(false);
 
   const [offsets, setOffsets] = useState({
     keyboard: 0,
@@ -27,11 +26,6 @@ function Chat(props: ChatProps) {
   });
 
   const styles = useStyles();
-
-  useEffect(() => {
-    flagRef.current = flag;
-  });
-
   const keyboard = useKeyboard({
     keyboardShow: () => {
       if (flagRef.current) {
@@ -43,7 +37,7 @@ function Chat(props: ChatProps) {
   const handleScroll = (event: any) => {
     if (keyboard) {
       if (event.nativeEvent.contentOffset.y < offsets.keyboard) {
-        setFlag(false);
+        flagRef.current = false;
       }
       setOffsets({
         keyboard: event.nativeEvent.contentOffset.y,
@@ -51,7 +45,7 @@ function Chat(props: ChatProps) {
       });
     } else if (!keyboard) {
       if (event.nativeEvent.contentOffset.y < offsets.notKeyboard) {
-        setFlag(false);
+        flagRef.current = false;
       }
       setOffsets({
         keyboard: offsets.notKeyboard,
@@ -80,7 +74,8 @@ function Chat(props: ChatProps) {
       ref={list}
       onContentSizeChange={() => list.current.scrollToEnd()}
       onScroll={handleScroll}
-      onEndReached={() => setFlag(true)}
+      onEndReached={() => (flagRef.current = true)}
+      keyboardShouldPersistTaps={'handled'}
     />
   );
 }
