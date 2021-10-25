@@ -4,13 +4,12 @@ import {Animated, Easing} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import makeStyles from '../core/hooks/makeStyles';
 import {requestAudioPermission} from '../core/utils/permission';
-import {AudioContent, MessageType, TextContent} from '../core/models/message';
 import {useAudioRecorder} from '../core/hooks/useAudioRecorder';
-import {useAudio} from '../core/redux/audioPlayerContext';
-import RNFetchBlob from 'rn-fetch-blob';
+
+import {FormatType} from '../core/models/enums/formatType';
 
 interface ChatInputProps {
-  sendMessage: (content: TextContent | AudioContent, type: MessageType) => void;
+  sendMessage: (content: string, type: FormatType) => void;
 }
 
 const useStyles = makeStyles(theme => ({
@@ -46,17 +45,13 @@ function ChatInput(props: ChatInputProps) {
   const [text, setText] = useState<string>('');
   const [icon, setIcon] = useState<string>('mic');
 
-  const {audioState} = useAudio();
-  const {record, onStartRecord, onStopRecord, resetState} = useAudioRecorder(
-    audioState.audioRecorderPlayer,
-  );
+  const {startRecord, stopRecord} = useAudioRecorder();
 
   const [recording, setRecording] = useState(false);
-  const recordTime = record.recordTime.substring(0, 5);
 
   const handleText = async () => {
     if (text) {
-      props.sendMessage({text: text}, MessageType.TEXT);
+      props.sendMessage(text, FormatType.TEXT);
       setText('');
       changeIconAnimation('mic');
     }
@@ -93,25 +88,16 @@ function ChatInput(props: ChatInputProps) {
       return;
     }
 
-    const path = `${RNFetchBlob.fs.dirs.MainBundleDir}/audio.mp4`;
-
     if (!recording) {
       changeIconAnimation('send');
+      startRecord('audio_user.wav');
       setRecording(true);
-      onStartRecord(path);
     } else {
       changeIconAnimation('mic');
+      const url = await stopRecord();
       setRecording(false);
-      await onStopRecord();
 
-      props.sendMessage(
-        {
-          path: path,
-          duration: record.recordSecs / 1000,
-        },
-        MessageType.AUDIO,
-      );
-      resetState();
+      props.sendMessage(url, FormatType.AUDIO);
     }
   };
 
@@ -138,7 +124,7 @@ function ChatInput(props: ChatInputProps) {
             variant="unstyled"
           />
         ) : (
-          <Text style={styles.recordLabel}>{recordTime}</Text>
+          <Text style={styles.recordLabel}>Grabando</Text>
         )}
       </View>
 

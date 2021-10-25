@@ -12,6 +12,7 @@ interface ChatProps {
 const useStyles = makeStyles(_ => ({
   chat: {
     paddingVertical: 5,
+    flex: 1,
   },
 }));
 

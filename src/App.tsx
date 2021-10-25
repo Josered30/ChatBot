@@ -1,25 +1,19 @@
 import {NativeBaseProvider} from 'native-base';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 
 import {theme} from './styles/theme';
 import AppBar from './shared/Appbar';
 import ChatInput from './shared/ChatInput';
-import {
-  AudioContent,
-  Message,
-  MessageType,
-  TextContent,
-} from './core/models/message';
+import {Message} from './core/models/message';
 import Chat from './shared/Chat';
-
-import {RecognizeTextCommand} from '@aws-sdk/client-lex-runtime-v2';
 
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
-import {AudioPlayerProvider} from './core/redux/audioPlayerContext';
-import {lexClient} from './core/services/lexService';
-import {getMessageFromSpeech} from './core/services/pollyService';
+import {interactWithBot} from './core/services/lexService';
+import {FormatType} from './core/models/enums/formatType';
+import KeyboardShift from './shared/KeyboardShift';
+import RNAndroidKeyboardAdjust from 'rn-android-keyboard-adjust';
 
 const styles = StyleSheet.create({
   fullHeight: {
@@ -33,56 +27,46 @@ const styles = StyleSheet.create({
 const App = () => {
   const [data, setData] = useState<Message[]>([]);
 
-  const botInteraction = async (input: string) => {
-    const command = new RecognizeTextCommand({
-      text: input,
-      botId: 'DBNSQ56OSU',
-      botAliasId: 'TSTALIASID',
-      localeId: 'en_US',
-      sessionId: 'test-session',
-    });
+  useEffect(() => {
+    RNAndroidKeyboardAdjust.setAdjustResize();
+    RNAndroidKeyboardAdjust.setUnchanged();
+  });
 
-    const response = await lexClient.send(command).catch(console.log);
-    const responseText = response?.messages?.map((e: any) => e.content);
+  const botInteraction = async (input: string, requestType: FormatType) => {
+    const response = await interactWithBot(
+      input,
+      FormatType.TEXT,
+      requestType,
+      'sesion',
+    );
 
-    // const newData = response?.messages?.map(
-    //   (e: any): Message => ({
-    //     id: new Date().getTime(),
-    //     textContent: {text: e.content},
-    //     sender: 'bot',
-    //     type: MessageType.TEXT,
-    //   }),
-    // );
-
-    // if (newData) {
-    //   setData((e: Message[]) => [...e, ...newData]);
-    // }
-
-    console.log(responseText);
-
-    if (responseText) {
-      const message = await getMessageFromSpeech(responseText[0]);
-      setData((e: Message[]) => [...e, message]);
+    if (response) {
+      setData((e: Message[]) => [
+        ...e,
+        {
+          id: new Date().getTime(),
+          sender: 'bot',
+          textContent: response.textOutput[0],
+          type: FormatType.TEXT,
+        },
+      ]);
     }
   };
 
-  const sendMessage = async (
-    content: TextContent | AudioContent,
-    type: MessageType,
-  ) => {
-    if (type === MessageType.TEXT) {
+  const sendMessage = async (content: string, type: FormatType) => {
+    if (type === FormatType.TEXT) {
       const newMessage: Message = {
         id: new Date().getTime(),
-        textContent: content as TextContent,
+        textContent: content,
         sender: 'user',
         type: type,
       };
       setData((e: Message[]) => [...e, newMessage]);
-      botInteraction((content as TextContent).text);
+      botInteraction(content, FormatType.TEXT);
     } else {
       const newMessage: Message = {
         id: new Date().getTime(),
-        audioContent: content as AudioContent,
+        audioContent: content,
         sender: 'user',
         type: type,
       };
@@ -92,22 +76,20 @@ const App = () => {
 
   return (
     <NativeBaseProvider theme={theme}>
-      <AudioPlayerProvider>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor={theme.colors.background}
-        />
-        <AppBar />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={theme.colors.background}
+      />
 
-        <SafeAreaView
-          style={{
-            backgroundColor: theme.colors.background,
-            ...styles.fullHeight,
-          }}>
-          <Chat data={data} />
-          <ChatInput sendMessage={sendMessage} />
-        </SafeAreaView>
-      </AudioPlayerProvider>
+      <SafeAreaView
+        style={{
+          backgroundColor: theme.colors.background,
+          ...styles.fullHeight,
+        }}>
+        <AppBar />
+        <Chat data={data} />
+        <ChatInput sendMessage={sendMessage} />
+      </SafeAreaView>
     </NativeBaseProvider>
   );
 };

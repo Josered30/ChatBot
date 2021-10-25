@@ -1,10 +1,12 @@
 import {HStack, IconButton, Text, useTheme, View} from 'native-base';
-import React, {useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {ColorValue, FlexAlignType} from 'react-native';
 import Sound from 'react-native-sound';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import makeStyles from '../core/hooks/makeStyles';
-import {Message, MessageType} from '../core/models/message';
+import {FormatType} from '../core/models/enums/formatType';
+import {Message} from '../core/models/message';
+import {getDuration} from '../core/services/pollyService';
 
 interface MessageProps {
   message: Message;
@@ -52,8 +54,15 @@ function MessageItem(props: MessageProps) {
   const styles = useStyles();
 
   const [play, setPlay] = useState(false);
+  const [duration, setDuration] = useState(0);
 
   let sound = useRef<Sound | null>(null);
+
+  useEffect(() => {
+    if (props.message.audioContent) {
+      getDuration(props.message.audioContent).then(e => setDuration(e));
+    }
+  });
 
   const color =
     props.color === null ? theme.colors.secondary[500] : props.color;
@@ -71,7 +80,7 @@ function MessageItem(props: MessageProps) {
         setPlay(true);
       } else {
         sound.current = new Sound(
-          props.message.audioContent?.path,
+          props.message.audioContent,
           undefined,
           error => {
             if (error) {
@@ -96,11 +105,11 @@ function MessageItem(props: MessageProps) {
     }
   };
 
-  if (props.message.type === MessageType.TEXT) {
+  if (props.message.type === FormatType.TEXT) {
     return (
       <View
         style={{backgroundColor: color, alignSelf: position, ...messageStyle}}>
-        <Text>{props.message.textContent?.text}</Text>
+        <Text>{props.message.textContent}</Text>
       </View>
     );
   } else {
@@ -121,9 +130,7 @@ function MessageItem(props: MessageProps) {
             onPress={handleAudio}
           />
 
-          <Text style={styles.audioText}>
-            {formatDuration(props.message.audioContent?.duration!!)}
-          </Text>
+          <Text style={styles.audioText}>{formatDuration(duration)}</Text>
         </HStack>
       </View>
     );
